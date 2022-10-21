@@ -1,0 +1,68 @@
+## Install and configure firewall
+sudo ufw allow in ssh
+sudo ufw allow in 443/tcp
+sudo ufw enable
+sudo ufw status
+
+## Request and install a CA-certificate for the site using certbot
+sudo snap install core
+sudo snap refresh core
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+sudo certbot certonly --apache 
+  dan@farout.se
+  genealogy.farout.se
+
+## Install apache2
+sudo apt install -y apache2
+sudo service apache2 start
+
+# Create webserver home directory and create simple HTML-file to use for testing.
+sudo vi /var/www/html/index.html
+sudo mkdir /srv/webtrees
+sudo cp /var/www/html/index.html /srv/webtrees/index.html
+
+cd /etc/apache2/sites-available
+sudo cp default-ssl.conf genealogy-ssl.conf
+sudo vi genealogy-ssl.conf
+  ServerAdmin dan@farout.se
+  DocumentRoot /srv/webtrees
+  SSLCertificateFile /etc/letsencrypt/live/genealogy.farout.se/cert.pem
+  SSLCertificateKeyFile /etc/letsencrypt/live/genealogy.farout.se/privkey.pem
+
+sudo a2dissite 000-default.conf
+sudo a2ensite genealogy-ssl
+sudo a2enmod ssl
+
+# Allow /srv directory and disallow old directories
+vi /etc/apache2/apache2.conf
+#<Directory /usr/share>
+#       AllowOverride None
+#       Require all granted
+#</Directory>
+
+#<Directory /var/www/>
+#       Options Indexes FollowSymLinks
+#       AllowOverride None
+#       Require all granted
+#</Directory>
+
+<Directory /srv/>
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+</Directory>
+
+sudo service apache2 restart
+
+## Install Mysql and create users and a database for Webtrees
+sudo apt-get install -y mysql-server mysql-client libmysqlclient-dev
+
+sudo mysql -u root -p
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '';
+sudo service mysql restart
+
+sudo mysql -u root -p
+CREATE USER 'huginn'@'localhost' IDENTIFIED WITH mysql_native_password BY '';
+SET default_storage_engine=INNODB;
+FLUSH PRIVILEGES;
